@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="みずほ銀行のキャッシュカードで、いま一番安く引き出せるATM（セブン銀行・ファミリーマート・みずほ銀行・ゆうちょ銀行）と手数料を時刻から計算する非公式ツール。メンテナンス予定も表示します。">
+<meta property="og:title" content="ATM手数料ナビ（非公式）">
+<meta property="og:description" content="みずほ銀行カードの今のATM手数料と、安くなる時刻がすぐわかる非公式ツール。">
+<meta property="og:type" content="website">
+<title>ATM手数料ナビ（非公式）｜みずほ銀行カードのコンビニATM手数料を今すぐ計算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono:wght@400;700&display=swap">
+<style>
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+/* Layout: デジタル庁デザインシステム（DADS）準拠の1カラム。白地・グレーの罫線・青のキーカラー。ライトテーマのみ（DADSの配色は白背景前提） */
+:root{
+  color-scheme:light;
+  --white:#ffffff; --black:#000000;
+  --gray-50:#f2f2f2; --gray-100:#e6e6e6; --gray-200:#cccccc; --gray-420:#949494; --gray-536:#767676; --gray-600:#666666; --gray-700:#4d4d4d; --gray-800:#333333; --gray-900:#1a1a1a;
+  --blue-50:#e8f1fe; --blue-100:#d9e6ff; --blue-200:#c5d7fb; --blue-900:#0017c1; --blue-1000:#00118f; --blue-1100:#000071;
+  --green-50:#e6f5ec; --green-600:#259d63; --green-800:#197a4b;
+  --yellow-50:#fbf5e0; --yellow-300:#ffd43d; --yellow-700:#b78f00; --yellow-900:#927200;
+  --red-50:#fdeeee; --red-900:#ce0000;
+  --orange-800:#c74700;
+  --r-8:.5rem; --r-12:.75rem;
+  --f-sans:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"Noto Sans Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--white);color:var(--gray-900)}
+body{font-family:var(--f-sans);font-size:16px;line-height:1.7;letter-spacing:.02em;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+
+/* ヘッダー */
+.site{border-bottom:1px solid var(--gray-420);padding-block:16px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.site .brand{font-size:18px;font-weight:700;line-height:1.6;letter-spacing:.02em}
+.site .now{font-family:var(--f-mono);font-size:16px;line-height:1.5;color:var(--gray-800);letter-spacing:0}
+.site .now b{font-weight:700}
+
+h1{font-size:28px;font-weight:700;line-height:1.5;letter-spacing:.01em;margin:0}
+h2{font-size:22px;font-weight:700;line-height:1.5;margin:0}
+.lead{margin:8px 0 0;color:var(--gray-800)}
+
+/* ノティフィケーションバナー */
+.banners{display:flex;flex-direction:column;gap:16px}
+.banner{border:3px solid;border-radius:var(--r-12);padding:16px 20px;display:grid;grid-template-columns:24px 1fr;gap:4px 12px;background:var(--white)}
+.banner svg{width:24px;height:24px;margin-top:2px}
+.banner .t{font-weight:700;font-size:17px;line-height:1.6}
+.banner p{margin:0;grid-column:2}
+.banner.error{border-color:var(--red-900)} .banner.error svg{fill:var(--red-900)} .banner.error .t{color:var(--red-900)}
+.banner.warning{border-color:var(--yellow-700)} .banner.warning svg{fill:var(--yellow-900)} .banner.warning .t{color:var(--yellow-900)}
+
+/* 結論 */
+.answer{background:var(--blue-50);border-radius:var(--r-12);padding:24px}
+.answer .label{font-size:16px;font-weight:700;color:var(--blue-1000)}
+.answer .main{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap;margin-top:4px}
+.answer .name{font-size:24px;font-weight:700;line-height:1.5;text-wrap:balance;min-width:0}
+.answer .yen{font-size:36px;line-height:1.4}
+.answer .hint{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--blue-200)}
+.answer .hint b{font-family:var(--f-mono);letter-spacing:0}
+.yen{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:0;white-space:nowrap}
+
+/* ATM一覧 */
+.section{display:flex;flex-direction:column;gap:16px}
+.legend{display:flex;gap:8px 20px;flex-wrap:wrap;font-size:14px;line-height:1.5;color:var(--gray-800)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:16px;height:16px;border-radius:2px}
+.list{list-style:none;margin:0;padding:0;border-top:1px solid var(--gray-420)}
+.row{border-bottom:1px solid var(--gray-420);padding-block:20px;display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:start}
+.row .nm{min-width:0}
+.row .nm strong{font-size:18px;line-height:1.6;display:block}
+.row .where{font-size:14px;line-height:1.5;color:var(--gray-700)}
+.row .yen{font-size:24px;line-height:1.5;text-align:right}
+.row.is-off .yen{color:var(--gray-600)}
+.tag{display:inline-block;font-size:14px;font-weight:700;line-height:1.3;padding:2px 8px;border:1px solid;border-radius:var(--r-8);margin-top:4px}
+.tag.ok{color:var(--green-800);background:var(--green-50);border-color:var(--green-800)}
+.tag.mid{color:var(--yellow-900);background:var(--yellow-50);border-color:var(--yellow-900)}
+.tag.bad{color:var(--red-900);background:var(--red-50);border-color:var(--red-900)}
+.tag.off{color:var(--gray-800);background:var(--gray-50);border-color:var(--gray-536)}
+.row .next{grid-column:1/-1;margin:0;color:var(--gray-800)}
+.row .next b{font-family:var(--f-mono);letter-spacing:0}
+.chart{grid-column:1/-1}
+.strip{display:flex;height:16px;border-radius:2px;overflow:hidden;position:relative;border:1px solid var(--gray-420)}
+.strip span{display:block;height:100%}
+.s0{background:var(--green-600)} .s110{background:var(--yellow-700)} .s220{background:var(--red-900)}
+.soff{background:repeating-linear-gradient(135deg,var(--gray-200) 0 4px,var(--white) 4px 8px)}
+.strip .nowline{position:absolute;top:0;bottom:0;width:3px;background:var(--black)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:14px;line-height:1.5;color:var(--gray-700);letter-spacing:0}
+.actions{grid-column:1/-1}
+
+/* ボタン・リンク */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 16px;border-radius:var(--r-8);
+  font:inherit;font-size:16px;font-weight:700;line-height:1;letter-spacing:.02em;cursor:pointer;text-decoration:none;border:1px solid var(--blue-900)}
+.btn.filled{background:var(--blue-900);color:var(--white)}
+.btn.filled:hover{background:var(--blue-1000);border-color:var(--blue-1000);text-decoration:underline}
+.btn.filled:active{background:var(--blue-1100);border-color:var(--blue-1100)}
+.btn.outlined{background:var(--white);color:var(--blue-900)}
+.btn.outlined:hover{background:var(--blue-200);color:var(--blue-1000);border-color:var(--blue-1000);text-decoration:underline}
+.btn.outlined:active{background:var(--blue-200);color:var(--blue-1100);border-color:var(--blue-1100)}
+.btn.small{min-height:36px;padding:0 12px}
+.btn svg{width:20px;height:20px;fill:currentColor}
+a{color:var(--blue-1000);text-decoration:underline;text-underline-offset:3px}
+a:hover{color:var(--blue-1100);text-decoration-thickness:3px}
+:focus-visible{outline:4px solid var(--black);outline-offset:2px;box-shadow:0 0 0 2px var(--yellow-300)}
+
+/* 設定 */
+.panel{border:1px solid var(--gray-420);border-radius:var(--r-12);padding:24px;display:flex;flex-direction:column;gap:24px}
+.check{display:grid;grid-template-columns:24px 1fr;gap:12px;align-items:start;cursor:pointer}
+.check input{width:24px;height:24px;margin:2px 0 0;accent-color:var(--blue-900);cursor:pointer}
+.check .help{display:block;font-size:14px;line-height:1.6;color:var(--gray-700);margin-top:4px}
+.counter{background:var(--gray-50);border-radius:var(--r-8);padding:16px;display:flex;flex-direction:column;gap:12px}
+.counter .num{font-family:var(--f-mono);font-weight:700;font-size:20px;letter-spacing:0}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-weight:700}
+.field .help{font-size:14px;line-height:1.6;color:var(--gray-700);margin:0}
+.field .inline{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.field input{font:inherit;font-family:var(--f-mono);letter-spacing:0;min-height:48px;padding:0 12px;border:1px solid var(--gray-600);border-radius:var(--r-8);background:var(--white);color:var(--gray-900);max-width:100%}
+
+/* 非公式の表記 */
+.unofficial{display:inline-block;font-size:14px;font-weight:700;line-height:1.3;padding:2px 8px;margin-left:6px;border:1px solid var(--gray-800);border-radius:var(--r-8);color:var(--gray-800);vertical-align:2px}
+.disclaimer{background:var(--gray-50);border-left:4px solid var(--gray-700);border-radius:0 var(--r-8) var(--r-8) 0;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+.disclaimer p{margin:0}
+.disclaimer .t{font-weight:700;font-size:17px;line-height:1.6}
+.disclaimer .checked{font-size:14px;color:var(--gray-700)}
+.disclaimer .checked b{font-family:var(--f-mono);letter-spacing:0;color:var(--gray-900)}
+
+/* 注記 */
+.notes{font-size:14px;line-height:1.7;color:var(--gray-800);border-top:1px solid var(--gray-420);padding-top:24px}
+.notes h2{font-size:17px;margin-bottom:8px}
+.notes ul{margin:0 0 12px;padding-left:1.4em}
+.notes p{margin:0}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <span class="brand">ATM手数料ナビ <span class="unofficial">非公式</span></span>
+    <span class="now" id="clock">--/-- --:--</span>
+  </header>
+
+  <div>
+    <h1>いま一番安く引き出せるATM</h1>
+    <p class="lead">みずほ銀行のキャッシュカードで引き出すときの手数料を、現在の曜日と時刻で計算します。</p>
+  </div>
+
+  <aside class="disclaimer" aria-labelledby="h-disc">
+    <p class="t" id="h-disc">このサイトは個人が作成した非公式のツールです</p>
+    <p>みずほ銀行、セブン銀行、イーネット、ゆうちょ銀行、イオン銀行の公式サービスではなく、各社とは関係ありません。手数料は公開情報をもとに計算した目安です。実際の手数料はATMの画面に表示される金額が正しいので、引き出す前に必ず確認してください。</p>
+    <p class="checked">情報の最終確認日：<b>2026年10月14日</b></p>
+  </aside>
+
+  <div class="banners" id="banners"></div>
+
+  <section class="answer" id="answer" aria-live="polite">
+    <div class="label">いちばん安いATM</div>
+    <div class="main"><span class="name">計算しています</span><span class="yen"></span></div>
+    <p class="hint" hidden></p>
+  </section>
+
+  <section class="section" aria-labelledby="h-list">
+    <h2 id="h-list">ATMごとの手数料</h2>
+    <div class="legend" aria-hidden="true">
+      <span><i class="s0"></i>0円</span><span><i class="s110"></i>110円</span><span><i class="s220"></i>220円</span><span><i class="soff"></i>利用できない</span><span><i style="background:var(--black);width:3px"></i>現在時刻</span>
+    </div>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <section class="section" aria-labelledby="h-set">
+    <h2 id="h-set">設定</h2>
+    <div class="panel">
+      <label class="check" for="perk">
+        <input type="checkbox" id="perk">
+        <span>みずほマイレージクラブの「うれしい特典」の対象になっている
+          <span class="help">対象の場合、みずほ銀行ATM・イオン銀行ATMの時間外手数料が無料、イーネットATM（ファミリーマートなど）の手数料が月3回まで無料になります。対象かどうかはみずほ銀行のアプリで確認できます。</span>
+        </span>
+      </label>
+      <div class="counter" id="counter" hidden>
+        <span>今月のイーネットATM無料回数　残り <span class="num" id="left">3</span> 回</span>
+        <div class="btns">
+          <button type="button" class="btn outlined small" id="useOne">イーネットATMで引き出した</button>
+          <button type="button" class="btn outlined small" id="resetCount">回数を元に戻す</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="when">日時を指定して調べる</label>
+        <p class="help">週末や夜に引き出す予定があるときに使えます。</p>
+        <div class="inline">
+          <input type="datetime-local" id="when">
+          <button type="button" class="btn outlined small" id="nowBtn">現在の時刻に戻す</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="notes">
+    <h2>計算の前提</h2>
+    <ul>
+      <li>このサイトは個人が作成した非公式のツールで、記載の金融機関とは関係ありません。計算結果によって生じた損害について、作成者は責任を負いません。</li>
+      <li>みずほ銀行公式の手数料表（コンビニATM：2026年9月16日現在、みずほ銀行ATMほか：2026年1月5日現在）をもとに計算しています。メンテナンス予定は2026年10月14日時点のお知らせです。</li>
+      <li>ATMの稼働時間内でも、設置店舗の営業時間外は利用できません。</li>
+      <li>セブン銀行ATMでは振込ができません。コンビニATMでは硬貨の入出金ができません。</li>
+      <li>年末年始（12月31日〜1月3日）は祝日扱いの手数料で計算しています。</li>
+    </ul>
+    <p>出典：<a href="https://www.mizuhobank.co.jp/rate_fee/fee_time_conveni_atm.html" target="_blank" rel="noopener">コンビニATMご利用時間と手数料</a>、<a href="https://www.mizuhobank.co.jp/rate_fee/fee_atm_cd.html" target="_blank" rel="noopener">ATMのご利用時間と手数料</a>、<a href="https://www.mizuhobank.co.jp/oshirase/maintenance_personal.html" target="_blank" rel="noopener">システムメンテナンスのお知らせ</a>（みずほ銀行）</p>
+  </footer>
+</div>
+
+<script>
+/*LOGIC-START*/
+var JST_OFFSET = 9 * 3600e3;
+function jstTs(y, mo, d, h, mi) { return Date.UTC(y, mo - 1, d, h, mi) - JST_OFFSET; }
+function parts(ts) {
+  var t = new Date(ts + JST_OFFSET);
+  var p = { y: t.getUTCFullYear(), mo: t.getUTCMonth() + 1, d: t.getUTCDate(), h: t.getUTCHours(), mi: t.getUTCMinutes(), dow: t.getUTCDay() };
+  p.m = p.h * 60 + p.mi;
+  p.nth = Math.ceil(p.d / 7);
+  p.ymd = p.y + "-" + String(p.mo).padStart(2, "0") + "-" + String(p.d).padStart(2, "0");
+  return p;
+}
+var HOLIDAYS = new Set([
+  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06",
+  "2026-07-20","2026-08-11","2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
+  "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-03-22","2027-04-29","2027-05-03","2027-05-04","2027-05-05",
+  "2027-07-19","2027-08-11","2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23"
+]);
+function isHoliday(p) { return HOLIDAYS.has(p.ymd) || (p.mo === 12 && p.d === 31) || (p.mo === 1 && p.d <= 3); }
+var MAINT = [
+  { s: jstTs(2026,10,17,22,0), e: jstTs(2026,10,18,11,0), atms: ["seven","enet","own","yucho"], sure: true },
+  { s: jstTs(2026,11,14,22,0), e: jstTs(2026,11,15,11,0), atms: ["seven","enet","own","yucho"], sure: false }
+];
+function sat14(p) { return p.dow === 6 && (p.nth === 1 || p.nth === 4) && p.m >= 180 && p.m < 300; }
+var ATMS = [
+  { id: "seven", name: "セブン銀行ATM", where: "セブン-イレブンなど", maps: "セブン銀行 ATM",
+    avail: function (p) { if (p.dow === 6) return p.m < 1320 && !sat14(p); if (p.dow === 0) return p.m >= 480; return true; },
+    fee: function (p) { if (isHoliday(p)) return 220; if (p.dow >= 1 && p.dow <= 5) return (p.m >= 525 && p.m < 1080) ? 110 : 220; return 220; } },
+  { id: "enet", name: "イーネットATM", where: "ファミリーマートなど", maps: "ファミリーマート ATM",
+    avail: function (p) { if (p.dow === 6) return p.m < 1320 && !sat14(p); if (p.dow === 0) return p.m >= 480; return true; },
+    fee: function (p) { if (isHoliday(p)) return 220; if (p.dow >= 1 && p.dow <= 5) return (p.m >= 525 && p.m < 1080) ? 110 : 220; return 220; },
+    perkCount: true },
+  { id: "own", name: "みずほ銀行ATM・イオン銀行ATM", where: "駅前・みずほ銀行の店舗、イオンなど", maps: "みずほ銀行 ATM",
+    avail: function (p) {
+      if (p.dow === 1) return p.m >= 420; if (p.dow === 6) return p.m < 1320 && !sat14(p);
+      if (p.dow === 0) return p.m >= 480 && p.m < 1260; return true; },
+    fee: function (p, perk) {
+      if (perk) return 0;
+      if (isHoliday(p)) return p.m < 480 ? 220 : (p.m < 1380 ? 110 : 220);
+      if (p.dow >= 1 && p.dow <= 5) return p.m < 480 ? 220 : p.m < 525 ? 110 : p.m < 1080 ? 0 : p.m < 1380 ? 110 : 220;
+      if (p.dow === 6) return p.m < 480 ? 220 : 110;
+      return 110; } },
+  { id: "yucho", name: "ゆうちょ銀行ATM", where: "郵便局、一部のファミリーマート", maps: "ゆうちょ銀行 ATM",
+    avail: function (p) {
+      if (isHoliday(p)) { var st = p.dow === 0 ? 480 : (p.dow === 1 && p.nth === 3) ? 420 : 5; return p.m >= st && p.m < 1260 && !sat14(p); }
+      if (p.dow === 6) return p.m >= 5 && p.m < 1320 && !sat14(p);
+      if (p.dow === 0) return p.m >= 480 && p.m < 1260;
+      if (p.dow === 1 && p.nth === 3 && p.m < 420) return false;
+      return p.m >= 5 && p.m < 1435; },
+    fee: function (p) { if (!isHoliday(p) && p.dow >= 1 && p.dow <= 5 && p.m >= 525 && p.m < 1080) return 110; return 220; } }
+];
+function maintAt(ts, id) { for (var i = 0; i < MAINT.length; i++) { var w = MAINT[i]; if (ts >= w.s && ts < w.e && w.atms.indexOf(id) >= 0) return w; } return null; }
+function quote(atm, ts, st) {
+  var p = parts(ts);
+  var mw = maintAt(ts, atm.id);
+  if (mw) return { fee: null, why: mw.sure ? "メンテナンス中" : "メンテナンスの可能性" };
+  if (!atm.avail(p)) return { fee: null, why: "利用時間外" };
+  var f = atm.fee(p, st.perk);
+  if (atm.perkCount && st.perk && st.freeLeft > 0) return { fee: 0, why: "特典で無料", base: f };
+  return { fee: f, why: "" };
+}
+function better(a, b) { if (a.fee === null) return false; if (b.fee === null) return true; return a.fee < b.fee; }
+function lookahead(atm, ts, st) {
+  var cur = quote(atm, ts, st);
+  var start = Math.ceil((ts + 1) / 300000) * 300000;
+  for (var t = start; t <= ts + 36 * 3600e3; t += 300000) {
+    var q = quote(atm, t, st);
+    if (better(q, cur)) return { ts: t, q: q };
+  }
+  return null;
+}
+/*LOGIC-END*/
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var KEY = "atmnavi.v1";
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} }
+  var override = null;
+  var ICON_ERR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/></svg>';
+  var ICON_WARN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></svg>';
+  var ICON_MAP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"/></svg>';
+
+  function monthKey(ts) { var p = parts(ts); return p.y + "-" + p.mo; }
+  function freeLeft(ts) { var used = (saved.used && saved.used[monthKey(ts)]) || 0; return Math.max(0, 3 - used); }
+  function hm(ts) { var p = parts(ts); return p.h + ":" + String(p.mi).padStart(2, "0"); }
+  var WD = ["日","月","火","水","木","金","土"];
+  function md(ts) { var p = parts(ts); return p.mo + "月" + p.d + "日（" + WD[p.dow] + "）"; }
+  function dayLabel(ts, base) {
+    var p = parts(ts), b = parts(base);
+    if (p.ymd === b.ymd) return "";
+    if (p.ymd === parts(base + 86400e3).ymd) return "明日 ";
+    return p.mo + "/" + p.d + "（" + WD[p.dow] + "） ";
+  }
+  function rel(ms) { var m = Math.round(ms / 60000); if (m < 60) return "あと" + m + "分"; var h = Math.floor(m / 60), r = m % 60; return "あと" + h + "時間" + (r ? r + "分" : ""); }
+  function yen(f) { return f === null ? "―" : f + "円"; }
+  function tag(q) {
+    if (q.fee === null) return '<span class="tag off">' + q.why + "</span>";
+    if (q.fee === 0) return '<span class="tag ok">' + (q.why || "手数料なし") + "</span>";
+    return q.fee <= 110 ? '<span class="tag mid">110円の時間帯</span>' : '<span class="tag bad">220円の時間帯</span>';
+  }
+  function cls(f) { return f === null ? "soff" : "s" + f; }
+  function strip(atm, ts, st) {
+    var p = parts(ts), day0 = jstTs(p.y, p.mo, p.d, 0, 0), segs = [], last = null;
+    for (var i = 0; i < 96; i++) {
+      var f = quote(atm, day0 + i * 900000, st).fee;
+      if (last && last.f === f) last.n++; else { last = { f: f, n: 1 }; segs.push(last); }
+    }
+    var html = segs.map(function (s) { return '<span class="' + cls(s.f) + '" style="width:' + (s.n / 96 * 100) + '%"></span>'; }).join("");
+    html += '<span class="nowline" style="left:calc(' + (p.m / 1440 * 100) + '% - 1px)"></span>';
+    return '<div class="chart"><div class="strip" role="img" aria-label="' + atm.name + "の" + p.mo + "月" + p.d + '日の時間帯ごとの手数料">' + html + "</div>" +
+      '<div class="ticks" aria-hidden="true"><span>0時</span><span>6時</span><span>12時</span><span>18時</span><span>24時</span></div></div>';
+  }
+
+  function render() {
+    var ts = override !== null ? override : Date.now();
+    var st = { perk: !!saved.perk, freeLeft: freeLeft(ts) };
+    var p = parts(ts);
+    $("clock").innerHTML = (override !== null ? "指定日時 " : "") + md(ts) + (isHoliday(p) ? "・祝日扱い" : "") + " <b>" + hm(ts) + "</b>";
+
+    var b = "";
+    MAINT.forEach(function (w) {
+      var range = md(w.s) + " " + hm(w.s) + "から" + md(w.e) + " " + hm(w.e) + "まで";
+      if (ts >= w.s && ts < w.e) b += '<div class="banner error" role="alert">' + ICON_ERR + '<div class="t">' + (w.sure ? "みずほ銀行のシステムメンテナンス中です" : "みずほ銀行のシステムメンテナンス中の可能性があります") + "</div><p>" + range + "、みずほ銀行ATM・コンビニATM・ゆうちょ銀行ATMでみずほ銀行のカードが使えません。</p></div>";
+      else if (ts < w.s && w.s - ts < 5 * 86400e3) b += '<div class="banner warning">' + ICON_WARN + '<div class="t">' + (w.sure ? "システムメンテナンスの予定があります" : "システムメンテナンスを行う可能性があります") + "</div><p>" + range + "、" + (w.sure ? "みずほ銀行のカードはほとんどのATMで使えません。" : "作業状況によっては休止するとみずほ銀行が案内しています。") + "現金が必要な場合は、それまで（" + rel(w.s - ts) + "）に引き出してください。</p></div>";
+    });
+    $("banners").innerHTML = b;
+
+    var rows = ATMS.map(function (a) { return { a: a, q: quote(a, ts, st), next: lookahead(a, ts, st) }; });
+    rows.sort(function (x, y) { if (x.q.fee === null && y.q.fee === null) return 0; if (x.q.fee === null) return 1; if (y.q.fee === null) return -1; return x.q.fee - y.q.fee; });
+    var best = rows[0];
+    var ans = $("answer");
+    if (best.q.fee === null) { ans.querySelector(".name").textContent = "現在、利用できるATMはありません"; ans.querySelector(".yen").textContent = ""; }
+    else {
+      ans.querySelector(".name").textContent = rows.filter(function (r) { return r.q.fee === best.q.fee; }).map(function (r) { return r.a.name; }).join("、");
+      ans.querySelector(".yen").textContent = best.q.fee + "円";
+    }
+    var hint = null;
+    rows.forEach(function (r) { if (r.next && r.next.q.fee !== null && (best.q.fee === null || r.next.q.fee < best.q.fee)) { if (!hint || r.next.ts < hint.ts) hint = { ts: r.next.ts, q: r.next.q, a: r.a }; } });
+    var h = ans.querySelector(".hint");
+    if (hint) { h.hidden = false; h.innerHTML = "待てる場合は、<b>" + dayLabel(hint.ts, ts) + hm(hint.ts) + "</b>から" + hint.a.name + "が<b>" + yen(hint.q.fee) + "</b>になります（" + rel(hint.ts - ts) + "）。"; }
+    else h.hidden = true;
+
+    $("list").innerHTML = rows.map(function (r) {
+      var n;
+      if (r.next) n = '<p class="next">' + (r.q.fee === null ? "次に利用できるのは " : "次に安くなるのは ") + "<b>" + dayLabel(r.next.ts, ts) + hm(r.next.ts) + "</b> から " + yen(r.next.q.fee) + "（" + rel(r.next.ts - ts) + "）</p>";
+      else n = '<p class="next">' + (r.q.fee === 0 ? "現在は手数料がかかりません。" : "この先36時間は、これより安くなりません。") + "</p>";
+      var maps = "https://www.google.com/maps/search/" + encodeURIComponent(r.a.maps);
+      return '<li class="row' + (r.q.fee === null ? " is-off" : "") + '"><div class="nm"><strong>' + r.a.name + '</strong><span class="where">' + r.a.where + "</span><br>" + tag(r.q) + "</div>" +
+        '<div class="yen">' + yen(r.q.fee) + "</div>" + n + strip(r.a, ts, st) +
+        '<div class="actions"><a class="btn ' + (r === best && r.q.fee !== null ? "filled" : "outlined") + ' small" href="' + maps + '" target="_blank" rel="noopener">' + ICON_MAP + "近くのATMを地図で探す</a></div></li>";
+    }).join("");
+
+    $("perk").checked = !!saved.perk;
+    $("counter").hidden = !saved.perk;
+    $("left").textContent = st.freeLeft;
+  }
+
+  $("perk").addEventListener("change", function (e) { saved.perk = e.target.checked; save(); render(); });
+  $("useOne").addEventListener("click", function () { var k = monthKey(override !== null ? override : Date.now()); saved.used = saved.used || {}; saved.used[k] = Math.min(3, (saved.used[k] || 0) + 1); save(); render(); });
+  $("resetCount").addEventListener("click", function () { saved.used = saved.used || {}; saved.used[monthKey(override !== null ? override : Date.now())] = 0; save(); render(); });
+  $("when").addEventListener("change", function (e) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(e.target.value);
+    override = m ? jstTs(+m[1], +m[2], +m[3], +m[4], +m[5]) : null; render();
+  });
+  $("nowBtn").addEventListener("click", function () { override = null; $("when").value = ""; render(); });
+  render();
+  setInterval(function () { if (override === null) render(); }, 30000);
+})();
+</script>
+
+</body>
+</html>
