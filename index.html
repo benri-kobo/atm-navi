@@ -10,7 +10,7 @@
 <title>ATM手数料ナビ（非公式）｜みずほ銀行カードのコンビニATM手数料を今すぐ計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono:wght@400;700&display=optional">
 <style>
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
@@ -46,6 +46,7 @@ h2{font-size:22px;font-weight:700;line-height:1.5;margin:0}
 
 /* ノティフィケーションバナー */
 .banners{display:flex;flex-direction:column;gap:16px}
+.banners:empty{display:none}
 .banner{border:3px solid;border-radius:var(--r-12);padding:16px 20px;display:grid;grid-template-columns:24px 1fr;gap:4px 12px;background:var(--white)}
 .banner svg{width:24px;height:24px;margin-top:2px}
 .banner .t{font-weight:700;font-size:17px;line-height:1.6}
@@ -159,7 +160,7 @@ a:hover{color:var(--blue-1100);text-decoration-thickness:3px}
   <section class="answer" id="answer" aria-live="polite">
     <div class="label">いちばん安いATM</div>
     <div class="main"><span class="name">計算しています</span><span class="yen"></span></div>
-    <p class="hint" hidden></p>
+    <p class="hint">&nbsp;</p>
   </section>
 
   <section class="section" aria-labelledby="h-list">
@@ -352,8 +353,8 @@ function lookahead(atm, ts, st) {
     var hint = null;
     rows.forEach(function (r) { if (r.next && r.next.q.fee !== null && (best.q.fee === null || r.next.q.fee < best.q.fee)) { if (!hint || r.next.ts < hint.ts) hint = { ts: r.next.ts, q: r.next.q, a: r.a }; } });
     var h = ans.querySelector(".hint");
-    if (hint) { h.hidden = false; h.innerHTML = "待てる場合は、<b>" + dayLabel(hint.ts, ts) + hm(hint.ts) + "</b>から" + hint.a.name + "が<b>" + yen(hint.q.fee) + "</b>になります（" + rel(hint.ts - ts) + "）。"; }
-    else h.hidden = true;
+    if (hint) { h.innerHTML = "待てる場合は、<b>" + dayLabel(hint.ts, ts) + hm(hint.ts) + "</b>から" + hint.a.name + "が<b>" + yen(hint.q.fee) + "</b>になります（" + rel(hint.ts - ts) + "）。"; }
+    else h.textContent = "この先36時間は、これより安くなる時間帯はありません。";
 
     $("list").innerHTML = rows.map(function (r) {
       var n;
